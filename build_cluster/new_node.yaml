@@ -1,0 +1,133 @@
+-
+  name: Test Connectivity
+  hosts: all
+  tasks:
+  - name: Test Ping
+    ping:
+-
+  name: Configure SELinux
+  hosts: all
+  become: yes
+  tasks:
+  - name: Disable SELinux
+    selinux:
+      state: disabled
+-
+  name: Configure Packages
+  hosts: all
+  become: yes
+  tasks:
+  - name: Install misc packages
+    dnf:
+      disable_gpg_check: yes
+      name: "{{ item.name }}"
+      state: "{{ item.state }}"
+    loop:
+      - name: "epel-release"
+        state: "present"
+      - name: "socat"
+        state: "present"
+      - name: "httpd"
+        state: "present"
+
+  - name: Install remi repo
+    dnf:
+      disable_gpg_check: yes
+      name: "https://rpms.remirepo.net/enterprise/remi-release-8.rpm"
+      state: "present"
+  - name: Tell PHP module to use remi
+    copy:
+      dest: /etc/dnf/modules.d/mysql.module
+      content: |
+        [php]
+        name=php
+        stream=remi-7.4
+        profiles=
+        state=enabled
+    when: 
+      - ansible_os_family == 'RedHat'
+      - ansible_distribution_major_version | int >= 8
+  - name: Install PHP packages
+    dnf:
+      disable_gpg_check: yes
+      name: "{{ item.name }}"
+      state: "{{ item.state }}"
+    loop:
+      - name: "php"
+        state: "present"
+      - name: "php-mysqlnd"
+        state: "present"
+      - name: "php-gd"
+        state: "present"
+  - name: Install percona-release
+    become: yes
+    dnf:
+      disable_gpg_check: yes
+      name: "https://repo.percona.com/yum/percona-release-latest.noarch.rpm"
+      state: "present"
+
+  - name: Disable default MySQL module
+    copy:
+      dest: /etc/dnf/modules.d/mysql.module
+      content: |
+        [mysql]
+        name=mysql
+        stream=
+        profiles=
+        state=disabled
+    when: 
+      - ansible_os_family == 'RedHat'
+      - ansible_distribution_major_version | int >= 8
+  - name: Enable Percona repos
+    become: yes
+    command: "{{ item.command }}"
+    loop:
+      - command: percona-release enable-only pxc-80 release
+      - command: percona-release enable tools release
+  - name: Install percona-xtradb-cluster
+    become: yes
+    dnf:
+      disable_gpg_check: yes
+      name: "percona-xtradb-cluster"
+      state: "present"
+-
+  name: Reboot
+  hosts: all
+  become: yes
+  tasks:
+  - name: Reboot node 
+    reboot:
+-
+  name: Configure Percona
+  become: yes
+  hosts: all
+  tasks:
+    - name: Copy my.cnf
+      copy: 
+        src: ./my.cnf
+        dest: /etc/my.cnf
+        owner: root
+        group: root
+        mode: 0755
+    - name: Start Percona
+      systemd:
+        name: mysql
+        state: restarted
+        enabled: no
+-
+  name: Configure web server
+  become: yes
+  hosts: all 
+  tasks:
+    - name: Copy webroot
+      copy:
+        src: /var/www/html/
+        dest: /var/www/html/
+        owner: apache
+        group: apache
+        mode: 0755
+    - name: Start and enable Apache
+      systemd: 
+        name: httpd
+        state: restarted
+        enabled: yes

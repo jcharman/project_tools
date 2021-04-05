@@ -1,0 +1,30 @@
+[mysqld]
+datadir=/var/lib/mysql
+user=mysql
+# To make sql_mode persistent
+#sql-mode='ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+pxc-encrypt-cluster-traffic=OFF
+
+#######################
+####### PERCONA #######
+#######################
+# Path to Galera library
+wsrep_provider=/usr/lib64/galera4/libgalera_smm.so
+# Cluster name
+wsrep_cluster_name=pxc-cluster
+# SST method
+wsrep_sst_method=xtrabackup-v2
+# Authentication for SST method
+#wsrep_sst_auth="sstuser:s3cret"
+# In order for Galera to work correctly binlog format should be ROW
+binlog_format=ROW
+# MyISAM storage engine has only experimental support
+default_storage_engine=InnoDB
+# This changes how InnoDB autoincrement locks are managed and is a requirement for Galera
+innodb_autoinc_lock_mode=2
+log-error=/var/log/mysqld.log
+
+# Fix hanging connections
+interactive_timeout=180
+wait_timeout=180
+

@@ -1,0 +1,21 @@
+-
+  name: Configure HAProxy
+  become: yes
+  hosts: all 
+  tasks:
+    - name: Install HAProxy
+      dnf:
+        name: "haproxy"
+        state: "present"
+    - name: Copy haproxy.cfg
+      copy:
+        src: ./haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: 0755
+    - name: Restart HAProxy
+      systemd: 
+        name: haproxy
+        state: restarted
+        enabled: yes
